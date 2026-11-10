@@ -95,3 +95,56 @@ Successful routing returns a `PathResult` containing an `Itinerary`:
 The C++ contract is represented by `Itinerary`, `RouteSegment`,
 `CostDuration`, and `TransportType` in `domain/`. Failed requests return an
 `ErrorResponse` with a stable `code` and human-readable `message`.
+
+## API layer
+
+`api/ApiService.h` provides HTTP-shaped request and JSON response handling:
+
+- `GET /locations`
+- `POST /routes/search`
+- `GET /routes/{id}`
+
+Example search request:
+
+```json
+{
+  "origin": "India",
+  "destination": "Japan",
+  "preference": "cheapest",
+  "transportTypes": ["plane", "train"],
+  "maximumTransfers": 3
+}
+```
+
+`ApiService::handle` is transport-neutral, so it can be connected to any HTTP
+server library or web framework. API tests run with `mingw32-make -f travel.make test`.
+
+An HTTP adapter should pass the incoming method, path, and body into
+`ApiService::handle`, then return `ApiResponse.status`, `body`, and
+`contentType`. This keeps HTTP framework code outside the routing engine.
+
+Run the local HTTP API with:
+
+```text
+mingw32-make -f travel.make api
+.\travel_api.exe
+```
+
+It listens at `http://localhost:8080`. The frontend defaults to this address,
+so start the API before running `npm run dev`. Set
+`VITE_API_BASE_URL` only when using a different API address.
+
+## Frontend
+
+The React/Vite frontend lives in [frontend/](./frontend). Install and run it
+with:
+
+```text
+cd frontend
+npm install
+npm run dev
+```
+
+Set `VITE_API_BASE_URL` when the HTTP API is running on a different address.
+The UI expects the API response for locations and routes so it never displays
+substitute route data.
