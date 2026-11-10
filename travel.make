@@ -7,10 +7,10 @@ all:
 	$(CXX) $(CXXFLAGS) -o travel cli/Main.cpp
 
 api:
-	$(CXX) $(CXXFLAGS) -o travel_api api/HttpServer.cpp -lws2_32
+	$(CXX) $(CXXFLAGS) -o travel_api api/HttpServer.cpp -lws2_32 -lwinhttp
 
 test:
 	$(CXX) $(CXXFLAGS) -o core_tests tests/core_tests.cpp
 	./core_tests
-	$(CXX) $(CXXFLAGS) -o api_tests tests/api_tests.cpp
+	$(CXX) $(CXXFLAGS) -o api_tests tests/api_tests.cpp -lwinhttp
 	./api_tests

@@ -8,6 +8,7 @@
 
 #include "../data/CsvParser.h"
 #include "../routing/Dijkstra.h"
+#include "../ai/GeminiClient.h"
 
 namespace travel {
 
@@ -34,6 +35,12 @@ public:
             }
             if (request.method == "POST" && request.path == "/routes/search") {
                 return search(request.body);
+            }
+            if (request.method == "POST" && request.path == "/preferences/parse") {
+                return parsePreferences(request.body);
+            }
+            if (request.method == "POST" && request.path == "/routes/explain") {
+                return explain(request.body);
             }
             if (request.method == "GET" && request.path.find("/routes/") == 0) {
                 return routeJson(request.path.substr(8));
@@ -75,6 +82,19 @@ private:
         const std::size_t end = body.find('"', start);
         if (end == std::string::npos) throw std::runtime_error("Invalid JSON string.");
         return body.substr(start, end - start);
+    }
+
+    static std::string unescape(const std::string& value) {
+        std::string result;
+        bool escaped = false;
+        for (char character : value) {
+            if (escaped) {
+                result += character == 'n' ? '\n' : character;
+                escaped = false;
+            } else if (character == '\\') escaped = true;
+            else result += character;
+        }
+        return result;
     }
 
     static int integerValue(const std::string& body, const std::string& key, int fallback) {
@@ -166,6 +186,32 @@ private:
             return error(status, result.error.code, result.error.message);
         }
         return itineraryJson(result.itinerary);
+    }
+
+    ApiResponse parsePreferences(const std::string& body) const {
+        const std::string prompt = unescape(value(body, "prompt"));
+        if (prompt.empty()) return error(400, "VALIDATION_ERROR", "prompt is required.");
+        const std::string extracted = GeminiClient::extract(prompt);
+        const std::string origin = value(extracted, "origin");
+        const std::string destination = value(extracted, "destination");
+        const std::string preference = value(extracted, "preference");
+        if (origin.empty() || destination.empty() ||
+            (preference != "fastest" && preference != "cheapest")) {
+            return error(422, "AI_VALIDATION_ERROR",
+                         "The AI response did not contain valid route preferences.");
+        }
+        if (graph_.findByCountry(origin) == nullptr || graph_.findByCountry(destination) == nullptr) {
+            return error(422, "AI_VALIDATION_ERROR",
+                         "The AI returned a country that is not in the route planner.");
+        }
+        return {200, extracted, "application/json"};
+    }
+
+    ApiResponse explain(const std::string& body) const {
+        if (body.empty()) return error(400, "VALIDATION_ERROR", "itinerary is required.");
+        const std::string explanation = GeminiClient::explain(body);
+        return {200, "{\"explanation\":\"" + escape(explanation) + "\"}",
+                "application/json"};
     }
 
     static ApiResponse itineraryJson(const Itinerary& itinerary) {

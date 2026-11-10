@@ -20,7 +20,7 @@
 ## Specifications
 
 - Optimized travel route plan
-- Route visualisation on Google Map
+- Interactive route visualisation with Leaflet and OpenStreetMap
 - Uses Graph data structure
 - Via flight
 - Fastest or cheapest preference
@@ -29,7 +29,7 @@
 
 - CMake build system used
 - Takes two countries as an input
-- Generates an .html file displaying the path
+- Generates structured JSON route data
 - Data for routes and cities are taken through .csv file
 - Graph holds location as nodes and routes as edges
 - Dijkstra's algorithm determines the shortest path between the origin and destination
@@ -64,7 +64,7 @@ directory so it can find `locations.csv` and `routes.csv`.
 - `domain/` contains locations, routes, and route results.
 - `routing/` contains the graph, scoring policy, and Dijkstra algorithm.
 - `data/` loads validated CSV data into a graph.
-- `cli/` contains HTML presentation and command-line orchestration in `cli/Main.cpp`.
+- `cli/` contains command-line orchestration in `cli/Main.cpp`.
 
 The routing layer returns a `PathResult` and has no dependency on command-line
 input or HTML generation, so it can be reused by another frontend or API.
@@ -103,6 +103,8 @@ The C++ contract is represented by `Itinerary`, `RouteSegment`,
 - `GET /locations`
 - `POST /routes/search`
 - `GET /routes/{id}`
+- `POST /preferences/parse` (optional Gemini-powered preference extraction)
+- `POST /routes/explain` (optional Gemini-powered explanation of a deterministic itinerary)
 
 Example search request:
 
@@ -148,3 +150,9 @@ npm run dev
 Set `VITE_API_BASE_URL` when the HTTP API is running on a different address.
 The UI expects the API response for locations and routes so it never displays
 substitute route data.
+
+AI features are optional. Configure `GEMINI_API_KEY` in the API server's
+environment (never in a `VITE_*` frontend variable). AI extracts validated
+search preferences and explains an already-calculated itinerary; Dijkstra
+remains authoritative for route selection. Without the key, manual search
+continues to work and AI requests return an explicit error.

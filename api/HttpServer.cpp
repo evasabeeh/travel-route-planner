@@ -4,8 +4,6 @@
 #include <stdexcept>
 #include <string>
 
-#include "ApiService.h"
-
 #ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -19,6 +17,8 @@ const Socket InvalidSocket = INVALID_SOCKET;
 typedef int Socket;
 const Socket InvalidSocket = -1;
 #endif
+
+#include "ApiService.h"
 
 namespace {
 

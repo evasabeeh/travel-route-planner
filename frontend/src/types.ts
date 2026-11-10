@@ -40,3 +40,15 @@ export interface ApiError {
     message: string;
   };
 }
+
+export interface AiPreferences {
+  origin: string;
+  destination: string;
+  preference: RoutePreference;
+  transportTypes: TransportType[];
+  maximumTransfers?: number;
+}
+
+export interface AiExplanation {
+  explanation: string;
+}

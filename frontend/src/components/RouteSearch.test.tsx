@@ -3,12 +3,13 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { getLocations } from "../api";
+import { getLocations, parsePreferences } from "../api";
 import { RouteSearch } from "./RouteSearch";
 
 vi.mock("../api", () => ({
   getLocations: vi.fn(),
   searchRoutes: vi.fn(),
+  parsePreferences: vi.fn(),
 }));
 
 const locations = [
@@ -71,5 +72,24 @@ describe("RouteSearch", () => {
 
     expect(cheapest).toBeChecked();
     expect(screen.getByRole("radio", { name: "Fastest" })).not.toBeChecked();
+  });
+
+  it("uses AI preferences without submitting a route automatically", async () => {
+    vi.mocked(parsePreferences).mockResolvedValue({
+      origin: "France",
+      destination: "Germany",
+      preference: "cheapest",
+      transportTypes: ["train"],
+      maximumTransfers: 2,
+    });
+    const user = userEvent.setup();
+    renderSearch();
+    await user.type(screen.getByPlaceholderText(/Cheapest route/i), "Cheapest France to Germany");
+    await user.click(screen.getByRole("button", { name: "Use AI" }));
+
+    expect(await screen.findByText(/Preferences extracted/i)).toBeVisible();
+    expect(screen.getAllByRole("combobox")[0]).toHaveValue("France");
+    expect(screen.getAllByRole("combobox")[1]).toHaveValue("Germany");
+    expect(screen.getByRole("radio", { name: "Best value" })).toBeChecked();
   });
 });

@@ -1,4 +1,4 @@
-import type { ApiError, Itinerary, Location, SearchRequest } from "./types";
+import type { AiExplanation, AiPreferences, ApiError, Itinerary, Location, SearchRequest } from "./types";
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 
@@ -26,5 +26,19 @@ export async function searchRoutes(input: SearchRequest): Promise<Itinerary> {
   return request<Itinerary>("/routes/search", {
     method: "POST",
     body: JSON.stringify(input),
+  });
+}
+
+export async function parsePreferences(prompt: string): Promise<AiPreferences> {
+  return request<AiPreferences>("/preferences/parse", {
+    method: "POST",
+    body: JSON.stringify({ prompt }),
+  });
+}
+
+export async function explainRoute(itinerary: Itinerary): Promise<AiExplanation> {
+  return request<AiExplanation>("/routes/explain", {
+    method: "POST",
+    body: JSON.stringify(itinerary),
   });
 }
