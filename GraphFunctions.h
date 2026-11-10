@@ -3,6 +3,7 @@
 
 #include <cmath>
 #include <limits>
+#include <memory>
 #include <queue>
 #include <stack>
 #include <stdexcept>
@@ -14,97 +15,54 @@
 
 class Graph {
 public:
-    std::vector<Route*> routes;
     std::vector<Location*> cities;
-    int numExists;
+    std::vector<Route*> routes;
 
-    Graph(const std::string& nodesFile, const std::string& edgesFile)
-        : routes(routeParser(edgesFile)),
-          cities(locationParser(nodesFile, routes)),
-          numExists(static_cast<int>(cities.size())) {}
-
-    ~Graph() {
-        for (Route* route : routes) {
-            delete route;
-        }
-        for (Location* city : cities) {
-            delete city;
-        }
+    Graph(const std::string& nodesFile, const std::string& edgesFile) {
+        ownedRoutes = routeParser(edgesFile);
+        ownedCities = locationParser(nodesFile, ownedRoutes);
+        for (const std::unique_ptr<Location>& city : ownedCities) cities.push_back(city.get());
+        for (const std::unique_ptr<Route>& route : ownedRoutes) routes.push_back(route.get());
     }
-
-    Graph(const Graph&) = delete;
-    Graph& operator=(const Graph&) = delete;
 
     int getCityIndex(const std::string& key) const {
         for (std::size_t i = 0; i < cities.size(); ++i) {
-            if (cities[i]->country == key) {
-                return static_cast<int>(i);
-            }
+            if (cities[i]->country == key) return static_cast<int>(i);
         }
         return -1;
     }
 
     Location* getCity(const std::string& key) const {
         const int index = getCityIndex(key);
-        return index == -1 ? nullptr : cities[static_cast<std::size_t>(index)];
+        return index < 0 ? nullptr : cities[static_cast<std::size_t>(index)];
     }
 
-    float getWeight(const std::string& startS, const std::string& endS,
-                    bool costOrTime) const {
-        return getWeight(getCity(startS), getCity(endS), costOrTime);
-    }
-
-    float getWeight(const Location* start, const Location* end,
-                    bool costOrTime) const {
-        if (start == nullptr || end == nullptr) {
-            return -1.0F;
+    float getWeight(Location* start, Location* end, bool costOrTime) const {
+        for (Route* route : start->routes) {
+            if (route->destination == end) return costOrTime ? route->cost : route->time;
         }
-        for (const Route* route : routes) {
-            if (route->doesConnect(start, end)) {
-                return costOrTime ? route->cost : route->time;
-            }
-        }
-        return -1.0F;
+        return std::numeric_limits<float>::infinity();
     }
 
     bool Dijkstras(const std::string& startS, bool costOrTime) {
         Location* start = getCity(startS);
-        if (start == nullptr) {
-            return false;
-        }
-
-        const float infinity = std::numeric_limits<float>::infinity();
+        if (start == nullptr) return false;
         for (Location* city : cities) {
-            city->lengthFromStart = infinity;
+            city->lengthFromStart = std::numeric_limits<float>::infinity();
             city->previous = nullptr;
             city->previousRoute = nullptr;
-            city->exists = true;
         }
-
-        using QueueEntry = std::pair<float, Location*>;
+        typedef std::pair<float, Location*> QueueEntry;
         std::priority_queue<QueueEntry, std::vector<QueueEntry>,
-                            std::greater<QueueEntry>> minHeap;
-        start->lengthFromStart = 0.0F;
-        minHeap.push({0.0F, start});
-
-        while (!minHeap.empty()) {
-            const QueueEntry current = minHeap.top();
-            minHeap.pop();
+                            std::greater<QueueEntry>> queue;
+        start->lengthFromStart = 0.0f;
+        queue.push(std::make_pair(0.0f, start));
+        while (!queue.empty()) {
+            const QueueEntry current = queue.top();
+            queue.pop();
             Location* city = current.second;
-
-            if (current.first > city->lengthFromStart) {
-                continue;
-            }
-            if (!city->exists) {
-                continue;
-            }
-            city->exists = false;
-
+            if (current.first > city->lengthFromStart) continue;
             for (Route* route : city->routes) {
-                if (route->destination == nullptr) {
-                    continue;
-                }
-
                 Location* adjacent = route->destination;
                 const float weight = costOrTime ? route->cost : route->time;
                 const float distance = city->lengthFromStart + weight;
@@ -112,92 +70,45 @@ public:
                     adjacent->lengthFromStart = distance;
                     adjacent->previous = city;
                     adjacent->previousRoute = route;
-                    adjacent->exists = true;
-                    minHeap.push({distance, adjacent});
+                    queue.push(std::make_pair(distance, adjacent));
                 }
             }
         }
         return true;
     }
 
-    std::vector<Location*> adjacentLocations(Location* city) const {
-        std::vector<Location*> output;
-        if (city == nullptr) {
-            return output;
-        }
-        for (const Route* route : city->routes) {
-            if (route->destination != nullptr) {
-                output.push_back(route->destination);
-            }
-        }
-        return output;
-    }
-
-    std::vector<Route*> adjacentRoutes(Location* city) const {
-        std::vector<Route*> output;
-        if (city == nullptr) {
-            return output;
-        }
-        for (Route* route : routes) {
-            if (route->origin == city && route->destination != nullptr) {
-                output.push_back(route);
-            }
-        }
-        return output;
-    }
-
-    Route* getRoute(Location* start, bool costOrTime,
-                    float totalDistance) const {
-        if (start == nullptr) {
-            return nullptr;
-        }
-        for (Route* route : start->routes) {
-            if (route->destination == nullptr) {
-                continue;
-            }
-            const float weight = costOrTime ? route->cost : route->time;
-            const float expected = start->lengthFromStart + weight;
-            if (std::fabs(expected - totalDistance) < 1e-5F) {
-                return route;
-            }
-        }
-        return nullptr;
+    bool hasRoute(const std::string& destinationS) const {
+        Location* destination = getCity(destinationS);
+        return destination != nullptr &&
+               std::isfinite(destination->lengthFromStart);
     }
 
     std::stack<Location*> cityStacker(const std::string& destinationS) const {
-        std::stack<Location*> output;
+        std::stack<Location*> result;
         Location* destination = getCity(destinationS);
-        if (destination == nullptr ||
-            std::isinf(destination->lengthFromStart)) {
-            return output;
-        }
-
         while (destination != nullptr) {
-            output.push(destination);
+            result.push(destination);
             destination = destination->previous;
         }
-        return output;
+        return result;
     }
 
-    std::stack<Route*> routeStacker(const std::string& destinationS,
-                                    bool) const {
-        std::stack<Route*> output;
+    std::stack<Route*> routeStacker(const std::string& destinationS) const {
+        std::stack<Route*> result;
         Location* destination = getCity(destinationS);
-        if (destination == nullptr ||
-            std::isinf(destination->lengthFromStart)) {
-            return output;
-        }
-
-        while (destination->previous != nullptr) {
+        while (destination != nullptr && destination->previous != nullptr) {
             if (destination->previousRoute == nullptr) {
-                output = std::stack<Route*>();
-                return output;
+                throw std::runtime_error("Route reconstruction failed");
             }
-            output.push(destination->previousRoute);
+            result.push(destination->previousRoute);
             destination = destination->previous;
         }
-        return output;
+        return result;
     }
+
+private:
+    std::vector<std::unique_ptr<Location>> ownedCities;
+    std::vector<std::unique_ptr<Route>> ownedRoutes;
 };
 
 #endif

@@ -1,36 +1,33 @@
-// // This program is designed to parse city and route data from files, build a graph from that data, and then find the shortest or cheapest path between two specified cities using Dijkstra's algorithm. It outputs the results to an HTML file.
-
 #include <iostream>
-#include <string>
 #include <stack>
 #include <stdexcept>
+#include <string>
 
-#include "FileOperations.h"          // custom header
-#include "Route.h"
+#include "FileOperations.h"
 #include "GraphFunctions.h"
 
-int main(int argc, char* argv[]){
+int main(int argc, char* argv[]) {
     std::string outputFilename;
     std::string origin;
     std::string destination;
     std::string preference;
 
     if (argc == 1) {
-        std::cout << "Enter filename for output (.html): ";
-        std::cin >> outputFilename;
+        std::cout << "Output filename (.html): ";
+        if (!(std::cin >> outputFilename)) return 2;
         std::cout << "Origin country: ";
-        std::cin >> origin;
+        if (!(std::cin >> origin)) return 2;
         std::cout << "Destination country: ";
-        std::cin >> destination;
-        std::cout << "Enter a preference (fastest/cheapest): ";
-        std::cin >> preference;
+        if (!(std::cin >> destination)) return 2;
+        std::cout << "Preference (fastest/cheapest): ";
+        if (!(std::cin >> preference)) return 2;
     } else if (argc == 5) {
         outputFilename = argv[1];
         origin = argv[2];
         destination = argv[3];
         preference = argv[4];
     } else {
-        std::cerr << "Usage: Main.exe <output.html> <origin-country> "
+        std::cerr << "Usage: travel <output.html> <origin-country> "
                      "<destination-country> <fastest|cheapest>\n";
         return 2;
     }
@@ -50,28 +47,20 @@ int main(int argc, char* argv[]){
             return 1;
         }
         if (graph.getCity(destination) == nullptr) {
-            std::cerr << "Destination country not found: " << destination
-                      << '\n';
+            std::cerr << "Destination country not found: " << destination << '\n';
             return 1;
         }
-        if (!graph.Dijkstras(origin, cheapest)) {
-            std::cerr << "Unable to calculate a route from " << origin
-                      << ".\n";
+        if (origin == destination) {
+            std::cerr << "Origin and destination must be different.\n";
             return 1;
         }
-
+        if (!graph.Dijkstras(origin, cheapest) || !graph.hasRoute(destination)) {
+            std::cerr << "No route found from " << origin << " to "
+                      << destination << ".\n";
+            return 1;
+        }
         std::stack<Location*> cityStack = graph.cityStacker(destination);
-        std::stack<Route*> routeStack = graph.routeStacker(destination, cheapest);
-        if (cityStack.empty() || routeStack.empty()) {
-            if (origin == destination) {
-                std::cerr << "Origin and destination must be different.\n";
-            } else {
-                std::cerr << "No route found from " << origin << " to "
-                          << destination << ".\n";
-            }
-            return 1;
-        }
-
+        std::stack<Route*> routeStack = graph.routeStacker(destination);
         outputGenerator(outputFilename, cityStack, routeStack, cheapest);
         std::cout << "Output file generated: " << outputFilename << '\n';
     } catch (const std::exception& error) {

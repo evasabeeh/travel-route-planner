@@ -34,21 +34,11 @@
 - Graph holds location as nodes and routes as edges
 - Dijkstra's algorithm determines the shortest path between the origin and destination
 
-## Running
+## Usage
 
-Build with a C++17 compiler:
+Build with `mingw32-make -f travel.make`, then run:
 
-```text
-g++ -std=c++17 -Wall -Wextra -Wpedantic Main.cpp -o travel.exe
-```
+`travel.exe <output.html> <origin-country> <destination-country> <fastest|cheapest>`
 
-Run with country names from `locations.csv`:
-
-```text
-travel.exe output.html China Japan fastest
-travel.exe output.html China Japan cheapest
-```
-
-Running `Main.exe` without arguments starts an interactive prompt. Invalid
-locations, malformed CSV values, and unreachable destinations are reported
-without generating a misleading route.
+The program reports invalid countries, malformed input files, and unreachable
+destinations without generating a route.

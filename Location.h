@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-class Route;
+#include "Route.h"
 
 class Location {
 public:
@@ -14,26 +14,39 @@ public:
     float lat;
     float lon;
     std::vector<Route*> routes;
-    bool exists;
     Location* previous;
     Route* previousRoute;
     float lengthFromStart;
 
-    Location()
-        : lat(0.0F), lon(0.0F), exists(true), previous(nullptr),
-          previousRoute(nullptr),
-          lengthFromStart(std::numeric_limits<float>::infinity()) {}
-
+    Location();
     Location(const std::string& count, const std::string& cap,
-             float lt = 0.0F, float lg = 0.0F)
-        : country(count), capital(cap), lat(lt), lon(lg), exists(true),
-          previous(nullptr), previousRoute(nullptr),
-          lengthFromStart(std::numeric_limits<float>::infinity()) {}
-
-    bool operator==(const Location& rhs) const {
-        return capital == rhs.capital;
-    }
+             float lt = 0.0f, float lg = 0.0f);
+    bool operator==(const Location& rhs) const;
+    bool operator<(const Location& rhs) const;
+    bool operator>(const Location& rhs) const;
 };
+
+inline Location::Location()
+    : lat(0.0f), lon(0.0f), previous(nullptr), previousRoute(nullptr),
+      lengthFromStart(std::numeric_limits<float>::infinity()) {}
+
+inline Location::Location(const std::string& count, const std::string& cap,
+                          float lt, float lg)
+    : country(count), capital(cap), lat(lt), lon(lg), previous(nullptr),
+      previousRoute(nullptr),
+      lengthFromStart(std::numeric_limits<float>::infinity()) {}
+
+inline bool Location::operator==(const Location& rhs) const {
+    return country == rhs.country;
+}
+
+inline bool Location::operator<(const Location& rhs) const {
+    return lengthFromStart < rhs.lengthFromStart;
+}
+
+inline bool Location::operator>(const Location& rhs) const {
+    return lengthFromStart > rhs.lengthFromStart;
+}
 
 struct compareLocation {
     bool operator()(const Location* lhs, const Location* rhs) const {

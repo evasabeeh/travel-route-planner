@@ -5,7 +5,7 @@
 
 class Location;
 
-const float MULTI = 3.0F;
+const float MULTI = 3.0f;
 
 class Route {
 public:
@@ -18,17 +18,22 @@ public:
     float cost;
     std::string note;
 
-    Route()
-        : origin(nullptr), destination(nullptr), time(0.0F), cost(0.0F) {}
-
+    Route();
     Route(Location* org, Location* dest, const std::string& trans,
-          float tim, float cst, const std::string& notee)
-        : origin(org), destination(dest), transport(trans), time(tim),
-          cost(trans == "plane" ? cst * MULTI : cst), note(notee) {}
-
-    bool doesConnect(const Location* start, const Location* end) const {
-        return start == origin && end == destination;
-    }
+          float tim, float cst, const std::string& notee);
+    bool doesConnect(const Location* start, const Location* end) const;
 };
+
+inline Route::Route()
+    : origin(nullptr), destination(nullptr), time(0.0f), cost(0.0f) {}
+
+inline Route::Route(Location* org, Location* dest, const std::string& trans,
+                    float tim, float cst, const std::string& notee)
+    : origin(org), destination(dest), transport(trans), time(tim),
+      cost(trans == "plane" ? cst * MULTI : cst), note(notee) {}
+
+inline bool Route::doesConnect(const Location* start, const Location* end) const {
+    return start != nullptr && end != nullptr && origin == start && destination == end;
+}
 
 #endif
