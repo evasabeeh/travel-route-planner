@@ -1,0 +1,16 @@
+notes
+
+# CMake and compiler output
+/build/
+/cmake-build-*/
+*.exe
+*.o
+*.obj
+*.out
+core_tests
+
+# Generated route output
+output.html
+
+# Temporary editor/compiler files
+tempCodeRunnerFile.*

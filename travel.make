@@ -1,2 +1,9 @@
+CXX ?= g++
+CXXFLAGS ?= -std=c++11 -Wall -Wextra -Wpedantic
+
 all:
-	g++ -o travel Main.cpp FileOperations.h Location.h Route.h GraphFunctions.h
+	$(CXX) $(CXXFLAGS) -o travel cli/Main.cpp
+
+test:
+	$(CXX) $(CXXFLAGS) -o core_tests tests/core_tests.cpp
+	./core_tests
