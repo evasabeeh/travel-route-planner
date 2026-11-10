@@ -68,3 +68,30 @@ directory so it can find `locations.csv` and `routes.csv`.
 
 The routing layer returns a `PathResult` and has no dependency on command-line
 input or HTML generation, so it can be reused by another frontend or API.
+
+## Route data contract
+
+Successful routing returns a `PathResult` containing an `Itinerary`:
+
+```json
+{
+  "origin": "India",
+  "destination": "Japan",
+  "totalCost": 1520,
+  "totalDuration": 42,
+  "transfers": 3,
+  "segments": [
+    {
+      "origin": "India",
+      "destination": "Japan",
+      "transport": "plane",
+      "cost": 1520,
+      "duration": 42
+    }
+  ]
+}
+```
+
+The C++ contract is represented by `Itinerary`, `RouteSegment`,
+`CostDuration`, and `TransportType` in `domain/`. Failed requests return an
+`ErrorResponse` with a stable `code` and human-readable `message`.

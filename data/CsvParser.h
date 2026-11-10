@@ -98,7 +98,7 @@ private:
             for (std::size_t i = 6; i < row.size(); ++i) note += "," + row[i];
             const float time = number(row[3], "time", lineNumber, file, true);
             const float cost = number(row[4], "cost", lineNumber, file, true);
-            graph.addRoute(row[0], row[1], row[2], time,
+            graph.addRoute(row[0], row[1], transportTypeFromString(row[2]), time,
                            row[2] == "plane" ? cost * PLANE_COST_MULTIPLIER : cost, note);
         }
     }

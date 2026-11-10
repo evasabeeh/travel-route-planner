@@ -35,15 +35,16 @@ inline void writeHtml(const std::string& filename, const PathResult& path) {
               "{zoom:3,center:new google.maps.LatLng(0,0),"
               "mapTypeId:google.maps.MapTypeId.ROADMAP});";
 
-    for (std::size_t i = 0; i < path.locations.size(); ++i) {
-        const Location& location = *path.locations[i];
+    for (std::size_t i = 0; i < path.itinerary.segments.size(); ++i) {
+        const RouteSegment& segment = path.itinerary.segments[i];
+        const Location& location = segment.origin;
         output << "new google.maps.Marker({position:new google.maps.LatLng("
                << std::setprecision(8) << location.latitude << "," << location.longitude
                << "),map:map,title:\"" << javascriptString(location.capital) << ", "
                << javascriptString(location.country) << "\"});";
-        if (i + 1 < path.locations.size()) {
-            const Route& route = *path.routes[i];
-            const Location& next = *path.locations[i + 1];
+        {
+            const RouteSegment& nextSegment = path.itinerary.segments[i];
+            const Location& next = nextSegment.destination;
             output << "var path" << i << "=new google.maps.Polyline({path:["
                    << "new google.maps.LatLng(" << location.latitude << ","
                    << location.longitude << "),new google.maps.LatLng("
@@ -54,9 +55,17 @@ inline void writeHtml(const std::string& filename, const PathResult& path) {
                    << ",'click',function(){alert(\""
                    << javascriptString(location.country) << " to "
                    << javascriptString(next.country) << " ("
-                   << javascriptString(route.transport) << ", "
-                   << route.time << " hours, $" << route.cost << ")\");});";
+                   << javascriptString(transportTypeName(segment.transport)) << ", "
+                   << segment.metrics.duration << " hours, $" << segment.metrics.cost
+                   << ")\");});";
         }
+    }
+    if (!path.itinerary.segments.empty()) {
+        const Location& finalLocation = path.itinerary.segments.back().destination;
+        output << "new google.maps.Marker({position:new google.maps.LatLng("
+               << finalLocation.latitude << "," << finalLocation.longitude
+               << "),map:map,title:\"" << javascriptString(finalLocation.capital)
+               << ", " << javascriptString(finalLocation.country) << "\"});";
     }
     output << "}google.maps.event.addDomListener(window,'load',initialize);"
               "</script></body></html>";

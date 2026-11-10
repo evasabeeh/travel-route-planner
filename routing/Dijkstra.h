@@ -21,19 +21,20 @@ public:
     static PathResult find(const Graph& graph, const std::string& originCountry,
                            const std::string& destinationCountry,
                            RouteCriterion criterion) {
-        PathResult result = {false, 0.0f, "", {}, {}};
+        PathResult result = {false, {}, {}};
         const Location* origin = graph.findByCountry(originCountry);
         const Location* destination = graph.findByCountry(destinationCountry);
         if (origin == nullptr) {
-            result.error = "Origin country not found: " + originCountry;
+            result.error = {"INVALID_ORIGIN", "Origin country not found: " + originCountry};
             return result;
         }
         if (destination == nullptr) {
-            result.error = "Destination country not found: " + destinationCountry;
+            result.error = {"INVALID_DESTINATION",
+                            "Destination country not found: " + destinationCountry};
             return result;
         }
         if (origin == destination) {
-            result.error = "Origin and destination must be different.";
+            result.error = {"SAME_LOCATION", "Origin and destination must be different."};
             return result;
         }
 
@@ -67,20 +68,31 @@ public:
         }
 
         if (!std::isfinite(distance[destination])) {
-            result.error = "No route found from " + originCountry + " to " +
-                           destinationCountry + ".";
+            result.error = {"NO_ROUTE", "No route found from " + originCountry + " to " +
+                            destinationCountry + "."};
             return result;
         }
         result.found = true;
-        result.totalWeight = distance[destination];
+        result.itinerary.origin = originCountry;
+        result.itinerary.destination = destinationCountry;
+        result.itinerary.totals = {0.0f, 0.0f};
         for (const Location* current = destination; current != nullptr;) {
-            result.locations.push_back(current);
             if (current == origin) break;
-            result.routes.push_back(previousRoute[current]);
+            const Route& route = *previousRoute[current];
+            result.itinerary.segments.push_back({
+                *route.origin, *route.destination, route.transport,
+                {route.cost, route.time}, route.note});
             current = previous[current];
         }
-        std::reverse(result.locations.begin(), result.locations.end());
-        std::reverse(result.routes.begin(), result.routes.end());
+        std::reverse(result.itinerary.segments.begin(), result.itinerary.segments.end());
+        result.itinerary.totals.cost = 0.0f;
+        result.itinerary.totals.duration = 0.0f;
+        for (const RouteSegment& segment : result.itinerary.segments) {
+            result.itinerary.totals.cost += segment.metrics.cost;
+            result.itinerary.totals.duration += segment.metrics.duration;
+        }
+        result.itinerary.transfers = result.itinerary.segments.empty()
+            ? 0u : static_cast<unsigned int>(result.itinerary.segments.size() - 1);
         return result;
     }
 };

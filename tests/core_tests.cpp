@@ -36,13 +36,16 @@ void testRoutes() {
     travel::Graph graph = graphWithRoutes();
     travel::PathResult fastest = travel::Dijkstra::find(
         graph, "A", "B", travel::RouteCriterion::Fastest);
-    check(fastest.found && fastest.routes.size() == 2, "fastest route failed");
-    check(std::fabs(fastest.totalWeight - 2.0f) < 0.001f, "fastest route failed");
+    check(fastest.found && fastest.itinerary.segments.size() == 2, "fastest route failed");
+    check(std::fabs(fastest.itinerary.totals.duration - 2.0f) < 0.001f,
+          "fastest route failed");
 
     travel::PathResult cheapest = travel::Dijkstra::find(
         graph, "A", "B", travel::RouteCriterion::Cheapest);
-    check(cheapest.found && cheapest.routes.size() == 2, "cheapest route failed");
-    check(std::fabs(cheapest.totalWeight - 200.0f) < 0.001f, "cheapest cost failed");
+    check(cheapest.found && cheapest.itinerary.segments.size() == 2,
+          "cheapest route failed");
+    check(std::fabs(cheapest.itinerary.totals.cost - 200.0f) < 0.001f,
+          "cheapest cost failed");
 }
 
 void testMultiStopAndErrors() {
@@ -51,7 +54,7 @@ void testMultiStopAndErrors() {
     travel::Graph graph = travel::CsvParser::load(locationsFile, routesFile);
     travel::PathResult path = travel::Dijkstra::find(
         graph, "A", "B", travel::RouteCriterion::Fastest);
-    check(path.found && path.routes.size() == 2, "multi-stop route failed");
+    check(path.found && path.itinerary.segments.size() == 2, "multi-stop route failed");
 
     check(!travel::Dijkstra::find(graph, "missing", "B",
                                    travel::RouteCriterion::Fastest).found,

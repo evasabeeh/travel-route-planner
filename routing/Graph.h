@@ -21,7 +21,7 @@ public:
     }
 
     void addRoute(const std::string& originCity, const std::string& destinationCity,
-                  const std::string& transport, float time, float cost,
+                  TransportType transport, float time, float cost,
                   const std::string& note) {
         const Location* origin = findByCapital(originCity);
         const Location* destination = findByCapital(destinationCity);

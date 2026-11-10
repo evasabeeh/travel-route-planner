@@ -45,7 +45,7 @@ int main(int argc, char* argv[]) {
         const travel::PathResult path =
             travel::Dijkstra::find(graph, origin, destination, criterion);
         if (!path.found) {
-            std::cerr << path.error << '\n';
+            std::cerr << path.error.code << ": " << path.error.message << '\n';
             return 1;
         }
         travel::writeHtml(output, path);
