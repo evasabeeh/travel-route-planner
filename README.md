@@ -33,3 +33,22 @@
 - Data for routes and cities are taken through .csv file
 - Graph holds location as nodes and routes as edges
 - Dijkstra's algorithm determines the shortest path between the origin and destination
+
+## Running
+
+Build with a C++17 compiler:
+
+```text
+g++ -std=c++17 -Wall -Wextra -Wpedantic Main.cpp -o travel.exe
+```
+
+Run with country names from `locations.csv`:
+
+```text
+travel.exe output.html China Japan fastest
+travel.exe output.html China Japan cheapest
+```
+
+Running `Main.exe` without arguments starts an interactive prompt. Invalid
+locations, malformed CSV values, and unreachable destinations are reported
+without generating a misleading route.

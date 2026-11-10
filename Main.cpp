@@ -2,93 +2,81 @@
 
 #include <iostream>
 #include <string>
-#include <fstream>
-#include <iterator>
-#include <vector>
 #include <stack>
+#include <stdexcept>
 
 #include "FileOperations.h"          // custom header
 #include "Route.h"
 #include "GraphFunctions.h"
 
-using namespace std;
-
 int main(int argc, char* argv[]){
+    std::string outputFilename;
+    std::string origin;
+    std::string destination;
+    std::string preference;
 
-	string locationsFilename = "locations.csv";
-	string routesFilename = "routes.csv";
-	string outputFilename;
-	string origin;
-	string destination;
-	string preference;
-	bool biPreference;
+    if (argc == 1) {
+        std::cout << "Enter filename for output (.html): ";
+        std::cin >> outputFilename;
+        std::cout << "Origin country: ";
+        std::cin >> origin;
+        std::cout << "Destination country: ";
+        std::cin >> destination;
+        std::cout << "Enter a preference (fastest/cheapest): ";
+        std::cin >> preference;
+    } else if (argc == 5) {
+        outputFilename = argv[1];
+        origin = argv[2];
+        destination = argv[3];
+        preference = argv[4];
+    } else {
+        std::cerr << "Usage: Main.exe <output.html> <origin-country> "
+                     "<destination-country> <fastest|cheapest>\n";
+        return 2;
+    }
 
-	if(argc > 3){
-		outputFilename = argv[3];
-	}
-	else{
-		cout << "Enter filename for output (.html): ";
-		cin >> outputFilename;
-	}
+    bool cheapest = false;
+    if (preference == "cheapest") {
+        cheapest = true;
+    } else if (preference != "fastest") {
+        std::cerr << "Preference must be 'fastest' or 'cheapest'.\n";
+        return 2;
+    }
 
-	if(argc > 4){
-		origin = argv[4];
-	}
-	else{
-		cout << "Origin: ";
-		cin >> origin;
-	}
+    try {
+        Graph graph("locations.csv", "routes.csv");
+        if (graph.getCity(origin) == nullptr) {
+            std::cerr << "Origin country not found: " << origin << '\n';
+            return 1;
+        }
+        if (graph.getCity(destination) == nullptr) {
+            std::cerr << "Destination country not found: " << destination
+                      << '\n';
+            return 1;
+        }
+        if (!graph.Dijkstras(origin, cheapest)) {
+            std::cerr << "Unable to calculate a route from " << origin
+                      << ".\n";
+            return 1;
+        }
 
-	if(argc > 5){
-		destination = argv[5];
-	}
-	else{
-		cout << "Destination: ";
-		cin >> destination;
-	}
+        std::stack<Location*> cityStack = graph.cityStacker(destination);
+        std::stack<Route*> routeStack = graph.routeStacker(destination, cheapest);
+        if (cityStack.empty() || routeStack.empty()) {
+            if (origin == destination) {
+                std::cerr << "Origin and destination must be different.\n";
+            } else {
+                std::cerr << "No route found from " << origin << " to "
+                          << destination << ".\n";
+            }
+            return 1;
+        }
 
-	if(argc > 6){
-		preference = argv[6];
-	}
-	else{
-		cout << "Enter a preference (fastest/cheapest): ";
-		cin >> preference;
-	}
-
-	if(preference.compare("cheapest") == 0){
-		biPreference = true;
-	}
-	else if(preference.compare("fastest") == 0){
-		biPreference = false;
-	}
-	else{
-		cout << "Invalid entry";
-		return 0;
-	}
-
-	Graph graph(locationsFilename, routesFilename);
-
-	cout << "Origin entered: " << origin << endl;
-	cout << "Destination entered: " << destination << endl;
-	
-	Location *originCity = graph.getCity(origin);
-	Location *destCity = graph.getCity(destination);
-
-	if (originCity == NULL)
-	{
-		cout << "Origin not found in graph!" << endl;
-	}
-	if (destCity == NULL)
-	{
-		cout << "Destination not found in graph!" << endl;
-	}
-
-	graph.Dijkstras(origin,biPreference);
-
-	stack<Location*> cityStack = graph.cityStacker(destination);
-	stack<Route*> routeStack = graph.routeStacker(destination, biPreference);
-
-	outputGenerator(outputFilename.c_str(), cityStack, routeStack, biPreference);
-
-	return 0;
+        outputGenerator(outputFilename, cityStack, routeStack, cheapest);
+        std::cout << "Output file generated: " << outputFilename << '\n';
+    } catch (const std::exception& error) {
+        std::cerr << "Error: " << error.what() << '\n';
+        return 1;
+    }
+    return 0;
 }
