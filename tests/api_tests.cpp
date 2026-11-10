@@ -39,6 +39,9 @@ int main() {
              "{\"origin\":\"A\",\"destination\":\"B\",\"preference\":\"fastest\"}"});
         check(search.status == 200 && search.body.find("\"segments\"") != std::string::npos,
               "route search endpoint failed");
+        check(search.body.find("\"latitude\":0") != std::string::npos &&
+                  search.body.find("\"longitude\":0") != std::string::npos,
+              "route locations must include coordinates");
 
         travel::ApiResponse filtered = api.handle(
             {"POST", "/routes/search",

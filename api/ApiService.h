@@ -178,14 +178,27 @@ private:
         for (std::size_t i = 0; i < itinerary.segments.size(); ++i) {
             const RouteSegment& segment = itinerary.segments[i];
             if (i != 0) json << ',';
-            json << "{\"origin\":\"" << escape(segment.origin.country)
-                 << "\",\"destination\":\"" << escape(segment.destination.country)
-                 << "\",\"transport\":\"" << transportTypeName(segment.transport)
+            json << "{\"origin\":" << locationJson(segment.origin)
+                 << ",\"destination\":" << locationJson(segment.destination)
+                 << ",\"transport\":\"" << transportTypeName(segment.transport)
                  << "\",\"cost\":" << segment.metrics.cost
-                 << ",\"duration\":" << segment.metrics.duration << '}';
+                 << ",\"duration\":" << segment.metrics.duration;
+            if (!segment.note.empty()) {
+                json << ",\"note\":\"" << escape(segment.note) << '"';
+            }
+            json << '}';
         }
         json << "]}";
         return {200, json.str(), "application/json"};
+    }
+
+    static std::string locationJson(const Location& location) {
+        std::ostringstream json;
+        json << "{\"country\":\"" << escape(location.country)
+             << "\",\"capital\":\"" << escape(location.capital)
+             << "\",\"latitude\":" << location.latitude
+             << ",\"longitude\":" << location.longitude << '}';
+        return json.str();
     }
 };
 

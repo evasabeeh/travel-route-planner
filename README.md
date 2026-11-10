@@ -53,7 +53,7 @@ Run the automated tests with:
 
 Run:
 
-`travel.exe <output.html> <origin-country> <destination-country> <fastest|cheapest>`
+`travel.exe <output.json> <origin-country> <destination-country> <fastest|cheapest>`
 
 The program reports invalid countries, malformed input files, and unreachable
 destinations without generating a route. Run the executable from the project
