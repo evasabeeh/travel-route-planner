@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { Link, Route, Routes, useLocation } from "react-router-dom";
 import { RouteSearch } from "./components/RouteSearch";
-import { WelcomeGlobe } from "./components/WelcomeGlobe";
-import { ResultsPage } from "./pages/ResultsPage";
+const WelcomeGlobe = lazy(() => import("./components/WelcomeGlobe").then((module) => ({ default: module.WelcomeGlobe })));
+const ResultsPage = lazy(() => import("./pages/ResultsPage").then((module) => ({ default: module.ResultsPage })));
 
 function Shell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
@@ -78,7 +78,7 @@ function WelcomePage() {
   }, []);
 
   return (
-    <main ref={pageRef} className="welcome-stage relative isolate flex min-h-screen items-center justify-center overflow-hidden bg-night px-[2.8rem] py-[8rem] text-white">
+    <main ref={pageRef} className="welcome-stage relative isolate flex min-h-screen items-center justify-center overflow-hidden bg-night px-[2.8rem] py-32 text-white">
       <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_50%_42%,var(--color-night-glow)_0,transparent_38%),linear-gradient(145deg,var(--color-night),var(--color-night-soft))]" />
       <div className="welcome-grid absolute inset-[-10%] -z-10 opacity-30" aria-hidden="true" />
       <div className="welcome-halo welcome-halo--one" aria-hidden="true" />
@@ -94,7 +94,9 @@ function WelcomePage() {
           Explore the world, compare your options, and find the journey worth taking.
         </p>
         <div className="animate-[welcome-globe_1.3s_.35s_cubic-bezier(.22,1,.36,1)_both]">
-          <WelcomeGlobe />
+          <Suspense fallback={<div className="h-[min(78vw,82rem)] w-[min(78vw,82rem)]" aria-label="Loading interactive globe" />}>
+            <WelcomeGlobe />
+          </Suspense>
         </div>
         <Link
           to="/planner"
@@ -114,7 +116,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<WelcomePage />} />
         <Route path="/planner" element={<HomePage />} />
-        <Route path="/results" element={<ResultsPage />} />
+        <Route path="/results" element={<Suspense fallback={<main className="p-20 text-center" role="status">Loading route results…</main>}><ResultsPage /></Suspense>} />
       </Routes>
     </Shell>
   );

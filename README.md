@@ -1,15 +1,3 @@
-<br/>
-<p align="center">
-  <img src="Output.png" alt="View" width="500" height="250"/> 
-  <h3 align="center">Optimized Travel Route Planner</h3>
-
-  <p align="center">
-     <em>The optimal travel route planner between two countries via flights, trains or buses, based on two options, ie, the fastest or the cheapest.</em>
-    <br/>
-    <br/>
-  </p>
-</p>
-
 ## Built With
 
 <p>
@@ -35,6 +23,44 @@
 - Dijkstra's algorithm determines the shortest path between the origin and destination
 
 ## Build
+
+### Prerequisites
+
+- C++11 compiler with MinGW or MSVC
+- CMake 3.15 or newer
+- Node.js 18 or newer and npm
+
+### Clean setup
+
+Clone the repository and build the native targets:
+
+```powershell
+git clone https://github.com/evasabeeh/travel-route-planner.git
+cd travel-route-planner
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --config Release
+ctest --test-dir build --output-on-failure -C Release
+```
+
+Install and run the frontend in a second terminal:
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+To run the local API, start it from the repository root before opening the
+frontend:
+
+```powershell
+mingw32-make -f travel.make api
+.\travel_api.exe
+```
+
+The API listens on `http://localhost:8080`. To enable optional Gemini
+features, set `GEMINI_API_KEY` in the API server environment. Keep the key
+server-side and never use a `VITE_*` variable for it.
 
 Configure and build with CMake:
 
@@ -68,6 +94,19 @@ directory so it can find `locations.csv` and `routes.csv`.
 
 The routing layer returns a `PathResult` and has no dependency on command-line
 input or HTML generation, so it can be reused by another frontend or API.
+
+```mermaid
+flowchart LR
+    UI[React + TypeScript frontend] -->|HTTP JSON| API[C++ HTTP API]
+    API --> SERVICE[ApiService]
+    SERVICE --> ROUTING[Dijkstra routing engine]
+    ROUTING --> GRAPH[Graph of locations and routes]
+    DATA[locations.csv + routes.csv] --> PARSER[CSV parser]
+    PARSER --> GRAPH
+    SERVICE -. optional preferences/explanations .-> GEMINI[Gemini API]
+    ROUTING --> RESULT[Itinerary JSON]
+    RESULT --> UI
+```
 
 ## Route data contract
 
@@ -121,6 +160,16 @@ Example search request:
 `ApiService::handle` is transport-neutral, so it can be connected to any HTTP
 server library or web framework. API tests run with `mingw32-make -f travel.make test`.
 
+### API endpoints
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| GET | `/locations` | Return supported countries, capitals, and coordinates. |
+| POST | `/routes/search` | Calculate a fastest or cheapest itinerary with filters. |
+| GET | `/routes/{id}` | Return details for a stored route. |
+| POST | `/preferences/parse` | Extract and validate search preferences with Gemini. |
+| POST | `/routes/explain` | Explain an already-calculated itinerary with Gemini. |
+
 An HTTP adapter should pass the incoming method, path, and body into
 `ApiService::handle`, then return `ApiResponse.status`, `body`, and
 `contentType`. This keeps HTTP framework code outside the routing engine.
@@ -150,6 +199,19 @@ npm run dev
 Set `VITE_API_BASE_URL` when the HTTP API is running on a different address.
 The UI expects the API response for locations and routes so it never displays
 substitute route data.
+
+Run frontend tests and generate a local coverage report with:
+
+```text
+npm test
+npm run test:coverage
+npm run analyze
+```
+
+The generated `coverage/` and `test-results/` directories are local artifacts
+and are intentionally excluded from version control. `npm run analyze`
+generates the ignored `stats.html` bundle treemap and the production build
+splits the results page and interactive globe into lazy-loaded chunks.
 
 AI features are optional. Configure `GEMINI_API_KEY` in the API server's
 environment (never in a `VITE_*` frontend variable). AI extracts validated

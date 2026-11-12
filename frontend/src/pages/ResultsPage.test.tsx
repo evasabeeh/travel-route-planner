@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { explainRoute, searchRoutes } from "../api";
@@ -66,6 +67,7 @@ describe("ResultsPage", () => {
     expect(screen.getByTestId("route-map")).toBeVisible();
     expect(screen.getByTestId("route-line")).toBeVisible();
     expect(screen.getAllByText("₹64,260").length).toBeGreaterThan(0);
+    await userEvent.click(screen.getByRole("button", { name: "Explain this route" }));
     expect(await screen.findByText(/calculated by the planner/i)).toBeVisible();
   });
 

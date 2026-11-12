@@ -191,7 +191,14 @@ private:
     ApiResponse parsePreferences(const std::string& body) const {
         const std::string prompt = unescape(value(body, "prompt"));
         if (prompt.empty()) return error(400, "VALIDATION_ERROR", "prompt is required.");
-        const std::string extracted = GeminiClient::extract(prompt);
+        std::ostringstream supportedCountries;
+        for (const std::unique_ptr<Location>& location : graph_.locations()) {
+            if (supportedCountries.tellp() > 0) supportedCountries << ", ";
+            supportedCountries << location->country;
+        }
+        const std::string extracted = GeminiClient::extract(
+            prompt + "\nUse origin and destination exactly as written from this supported "
+            "country list: " + supportedCountries.str());
         const std::string origin = value(extracted, "origin");
         const std::string destination = value(extracted, "destination");
         const std::string preference = value(extracted, "preference");

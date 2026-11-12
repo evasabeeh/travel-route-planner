@@ -40,8 +40,26 @@ describe("RouteSearch", () => {
 
     await user.click(origin);
     expect(await screen.findAllByRole("option")).not.toHaveLength(0);
+    expect(origin).toHaveAttribute("aria-autocomplete", "list");
+    expect(origin).toHaveAttribute("aria-controls");
     await user.keyboard("{ArrowDown}{Enter}");
 
+    expect(origin).toHaveValue("France");
+  });
+
+  it("supports Home and End navigation and restores focus after selection", async () => {
+    const user = userEvent.setup();
+    renderSearch();
+    const origin = screen.getAllByRole("combobox")[0];
+
+    await user.click(origin);
+    await user.keyboard("{End}{Enter}");
+    expect(origin).toHaveValue("Germany");
+    expect(origin).toHaveFocus();
+
+    await user.click(origin);
+    await user.clear(origin);
+    await user.keyboard("{Home}{Enter}");
     expect(origin).toHaveValue("France");
   });
 

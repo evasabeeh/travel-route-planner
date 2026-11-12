@@ -71,7 +71,7 @@ private:
             throw std::runtime_error("Unable to connect to the Gemini API.");
         }
         HINTERNET requestHandle = WinHttpOpenRequest(connection, L"POST",
-            L"/v1beta/models/gemini-2.0-flash:generateContent",
+            L"/v1beta/models/gemini-3-flash-preview:generateContent",
             nullptr, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES,
             WINHTTP_FLAG_SECURE);
         if (!requestHandle) {

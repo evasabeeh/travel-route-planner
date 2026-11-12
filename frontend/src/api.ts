@@ -22,10 +22,11 @@ export async function getLocations(): Promise<Location[]> {
   return response.locations;
 }
 
-export async function searchRoutes(input: SearchRequest): Promise<Itinerary> {
+export async function searchRoutes(input: SearchRequest, signal?: AbortSignal): Promise<Itinerary> {
   return request<Itinerary>("/routes/search", {
     method: "POST",
     body: JSON.stringify(input),
+    signal,
   });
 }
 
@@ -36,9 +37,10 @@ export async function parsePreferences(prompt: string): Promise<AiPreferences> {
   });
 }
 
-export async function explainRoute(itinerary: Itinerary): Promise<AiExplanation> {
+export async function explainRoute(itinerary: Itinerary, signal?: AbortSignal): Promise<AiExplanation> {
   return request<AiExplanation>("/routes/explain", {
     method: "POST",
     body: JSON.stringify(itinerary),
+    signal,
   });
 }
