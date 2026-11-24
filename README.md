@@ -9,8 +9,10 @@
 
 - Optimized travel route plan
 - Interactive route visualisation with Leaflet and OpenStreetMap
+- Shareable search URLs preserve origin, destination, preference and filters
+- Keyboard-accessible country search with a text itinerary alternative to the map
 - Uses Graph data structure
-- Via flight
+- Filter by transport type and maximum transfers
 - Fastest or cheapest preference
 
 ## Implementation
@@ -54,13 +56,15 @@ To run the local API, start it from the repository root before opening the
 frontend:
 
 ```powershell
-mingw32-make -f travel.make api
-.\travel_api.exe
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+# Move GEMINI_API_KEY from frontend/.env into root .env; keep VITE_* settings in frontend/.env.
+.\scripts\start-api.ps1
 ```
 
 The API listens on `http://localhost:8080`. To enable optional Gemini
-features, set `GEMINI_API_KEY` in the API server environment. Keep the key
-server-side and never use a `VITE_*` variable for it.
+features, add `GEMINI_API_KEY` to the root `.env`; the launcher loads it only
+into the API server process. Keep the key out of `frontend/.env` and never use
+a `VITE_*` variable for it. The root `.env` is ignored by Git.
 
 Configure and build with CMake:
 

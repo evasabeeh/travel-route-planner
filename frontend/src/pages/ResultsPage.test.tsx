@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { explainRoute, searchRoutes } from "../api";
 import type { Itinerary } from "../types";
 import { ResultsPage } from "./ResultsPage";
@@ -36,10 +36,10 @@ const itinerary: Itinerary = {
   }],
 };
 
-function renderResults() {
+function renderResults(initialEntry = "/results?origin=France&destination=Germany&preference=fastest&maximumTransfers=3") {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[initialEntry]}>
       <QueryClientProvider client={queryClient}>
         <ResultsPage />
       </QueryClientProvider>
@@ -48,16 +48,20 @@ function renderResults() {
 }
 
 describe("ResultsPage", () => {
+  let originalClipboard: PropertyDescriptor | undefined;
+
   beforeEach(() => {
-    sessionStorage.setItem("wayfinder-search", JSON.stringify({
-      origin: "France",
-      destination: "Germany",
-      preference: "fastest",
-      transportTypes: [],
-      maximumTransfers: 3,
-    }));
+    originalClipboard = Object.getOwnPropertyDescriptor(navigator, "clipboard");
     vi.mocked(searchRoutes).mockResolvedValue(itinerary);
     vi.mocked(explainRoute).mockResolvedValue({ explanation: "This route is calculated by the planner." });
+  });
+
+  afterEach(() => {
+    if (originalClipboard) {
+      Object.defineProperty(navigator, "clipboard", originalClipboard);
+    } else {
+      Reflect.deleteProperty(navigator, "clipboard");
+    }
   });
 
   it("renders route details and the interactive map boundary", async () => {
@@ -66,6 +70,7 @@ describe("ResultsPage", () => {
     expect(await screen.findByText("Recommended itinerary")).toBeVisible();
     expect(screen.getByTestId("route-map")).toBeVisible();
     expect(screen.getByTestId("route-line")).toBeVisible();
+    expect(screen.getByText(/Stops in order: Paris, France to Berlin, Germany/)).toBeInTheDocument();
     expect(screen.getAllByText("₹64,260").length).toBeGreaterThan(0);
     await userEvent.click(screen.getByRole("button", { name: "Explain this route" }));
     expect(await screen.findByText(/calculated by the planner/i)).toBeVisible();
@@ -76,7 +81,65 @@ describe("ResultsPage", () => {
     renderResults();
 
     await waitFor(() => {
-      expect(screen.getByText(/We couldn’t find a route/i)).toBeVisible();
+      expect(screen.getByText(/We couldn’t load this route/i)).toBeVisible();
     });
+  });
+
+  it("uses search details from the URL for direct links", async () => {
+    renderResults("/results?origin=France&destination=Germany&preference=cheapest&transport=plane&transport=train&maximumTransfers=2");
+
+    await screen.findByText("Recommended itinerary");
+    expect(screen.getByText("Best value")).toBeVisible();
+    expect(screen.getByText("Flight")).toBeVisible();
+    expect(screen.getByText("Train")).toBeVisible();
+    expect(screen.getByText("Max 2 transfers")).toBeVisible();
+    expect(vi.mocked(searchRoutes).mock.calls[0][0]).toEqual({
+      origin: "France",
+      destination: "Germany",
+      preference: "cheapest",
+      transportTypes: ["plane", "train"],
+      maximumTransfers: 2,
+    });
+  });
+
+  it("copies a shareable URL and announces success", async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+    renderResults();
+
+    await user.click(await screen.findByRole("button", { name: "Copy route link" }));
+
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining(
+      "/results?origin=France&destination=Germany&preference=fastest&maximumTransfers=3",
+    ));
+    expect(await screen.findByRole("status")).toHaveTextContent("Route link copied to clipboard.");
+  });
+
+  it("explains alternate-route cost, duration, and transfer trade-offs", async () => {
+    vi.mocked(searchRoutes)
+      .mockResolvedValueOnce(itinerary)
+      .mockResolvedValueOnce({
+        ...itinerary,
+        totalCost: 700,
+        totalDuration: 4.25,
+        transfers: 2,
+      });
+    renderResults();
+
+    expect(await screen.findByText(/Compared with the recommended route:/)).toHaveTextContent(
+      "Saves ₹5,460 · 1.3h slower · 1 more transfer.",
+    );
+  });
+
+  it("shows a clear empty state for incomplete route URLs", () => {
+    renderResults("/results?origin=France");
+
+    expect(screen.getByRole("heading", { name: "This route link is incomplete." })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Back to search" })).toHaveAttribute("href", "/planner");
+    expect(searchRoutes).not.toHaveBeenCalled();
   });
 });

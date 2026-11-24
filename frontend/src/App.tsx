@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef } from "react";
 import type { ReactNode } from "react";
 import { Link, Route, Routes, useLocation } from "react-router-dom";
 import { RouteSearch } from "./components/RouteSearch";
@@ -27,10 +27,9 @@ function Shell({ children }: { children: ReactNode }) {
 }
 
 function HomePage() {
-  const [submitted, setSubmitted] = useState(false);
   return (
     <main>
-      <section className="hero-panel mx-auto flex max-w-[118rem] items-center justify-between px-[2.8rem] pb-42 pt-30 max-sm:pb-20 max-sm:pt-12">
+      <section className="hero-panel mx-auto flex max-w-[118rem] items-center justify-between px-[2.8rem] pb-42 pt-30 max-sm:px-4 max-sm:pb-20 max-sm:pt-12">
         <div className="animate-[welcome-fade-up_.8s_ease-out_both]">
           <p className="mb-4 text-xs font-bold tracking-[.14em] text-muted">YOUR NEXT ADVENTURE STARTS HERE</p>
           <h1 className="font-display text-[clamp(3rem,7vw,5.8rem)] font-bold leading-[.98] tracking-[-.07em] text-navy">Find the route<br /><em className="text-coral not-italic">worth taking.</em></h1>
@@ -44,15 +43,10 @@ function HomePage() {
           <span className="route-orbit__dot route-orbit__dot--two" />
         </div>
       </section>
-      <section className="search-lift mx-auto -mt-10 max-w-372 px-[2.8rem]" aria-label="Route search">
-        <RouteSearch onSubmitted={() => setSubmitted(true)} />
+      <section className="search-lift mx-auto -mt-10 max-w-372 px-[2.8rem] max-sm:px-4" aria-label="Route search">
+        <RouteSearch />
       </section>
-      {submitted && (
-        <section className="mx-auto mt-[1.8rem] max-w-372 px-[2.8rem] text-sm text-green">
-          <span>✓</span> Your route is ready — compare options below.
-        </section>
-      )}
-      <section className="mx-auto grid max-w-[118rem] grid-cols-3 gap-11 px-[2.8rem] py-[9.2rem] max-sm:grid-cols-1 max-sm:gap-7 max-sm:pt-24" id="how-it-works">
+      <section className="mx-auto grid max-w-[118rem] grid-cols-3 gap-11 px-[2.8rem] py-[9.2rem] max-sm:grid-cols-1 max-sm:gap-7 max-sm:px-4 max-sm:pt-24" id="how-it-works">
         <article className="border-t border-border-muted pt-[1.8rem]"><span className="font-display text-sm font-bold text-coral">01</span><h2 className="my-[1.8rem] mb-2 font-display text-sm font-semibold">Tell us where</h2><p className="leading-6 text-muted">Choose your origin and destination with quick autocomplete.</p></article>
         <article className="border-t border-border-muted pt-[1.8rem]"><span className="font-display text-sm font-bold text-coral">02</span><h2 className="my-[1.8rem] mb-2 font-display text-sm font-semibold">Set your pace</h2><p className="leading-6 text-muted">Prioritize the fastest journey or the best value.</p></article>
         <article className="border-t border-border-muted pt-[1.8rem]"><span className="font-display text-sm font-bold text-coral">03</span><h2 className="my-[1.8rem] mb-2 font-display text-sm font-semibold">Make it yours</h2><p className="leading-6 text-muted">Filter transport, transfers and compare every leg.</p></article>

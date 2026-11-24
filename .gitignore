@@ -22,3 +22,4 @@ frontend/stats.html
 frontend/coverage/
 frontend/test-results/
 frontend/.env
+/.env

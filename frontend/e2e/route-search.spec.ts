@@ -33,6 +33,14 @@ async function mockApi(page: Page) {
   }));
 }
 
+async function expectNoHorizontalOverflow(page: Page) {
+  const widths = await page.evaluate(() => ({
+    documentWidth: document.documentElement.scrollWidth,
+    viewportWidth: window.innerWidth,
+  }));
+  expect(widths.documentWidth).toBeLessThanOrEqual(widths.viewportWidth);
+}
+
 test("completes a keyboard-accessible search workflow", async ({ page }) => {
   await mockApi(page);
   await page.goto("/planner");
@@ -41,18 +49,35 @@ test("completes a keyboard-accessible search workflow", async ({ page }) => {
   await origin.click();
   await expect(page.getByRole("option", { name: /France Paris/i })).toBeVisible();
   await origin.press("ArrowDown");
-  await page.getByRole("option").first().press("Enter");
+  await origin.press("Enter");
 
   const destination = page.getByRole("combobox").nth(1);
-  await destination.click();
+  await destination.fill("Germany");
+  await expect(page.getByRole("listbox", { name: "To country suggestions" }).getByRole("option", { name: /Germany Berlin/i })).toBeVisible();
   await destination.press("ArrowDown");
-  await page.getByRole("option").first().press("Enter");
+  await destination.press("Enter");
   await page.getByRole("radio", { name: "Best value" }).check();
   await page.getByRole("button", { name: /Search routes/i }).click();
 
-  await expect(page).toHaveURL(/\/results$/);
+  await expect(page).toHaveURL(/\/results\?origin=France&destination=Germany&preference=cheapest&maximumTransfers=3$/);
   await expect(page.getByRole("heading", { name: "Recommended itinerary" })).toBeVisible();
-  await expect(page.getByLabel(/Map showing the route/)).toBeVisible();
+  await expect(page.getByRole("group", { name: "Route map" })).toBeVisible();
+  await expect(page.getByText(/Stops in order: Paris, France to Berlin, Germany/)).toBeAttached();
+});
+
+test("opens a shared route link and prefills the search form", async ({ page }) => {
+  await mockApi(page);
+  await page.goto("/results?origin=France&destination=Germany&preference=cheapest&transport=bus&maximumTransfers=1");
+
+  await expect(page.getByRole("heading", { name: "Recommended itinerary" })).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await page.getByRole("link", { name: "Adjust search" }).click();
+
+  await expect(page.getByRole("combobox", { name: "From" })).toHaveValue("France");
+  await expect(page.getByRole("combobox", { name: "To" })).toHaveValue("Germany");
+  await expect(page.getByRole("radio", { name: "Best value" })).toBeChecked();
+  await expect(page.getByRole("checkbox", { name: "Buses" })).toBeChecked();
+  await expect(page.getByLabel("Max transfers")).toHaveValue("1");
 });
 
 test("keeps the form usable on mobile", async ({ page }) => {
@@ -62,4 +87,5 @@ test("keeps the form usable on mobile", async ({ page }) => {
   await expect(page.getByRole("region", { name: "Route search" })).toBeVisible();
   await expect(page.getByRole("combobox").first()).toBeVisible();
   await expect(page.getByRole("button", { name: /Search routes/i })).toBeVisible();
+  await expectNoHorizontalOverflow(page);
 });

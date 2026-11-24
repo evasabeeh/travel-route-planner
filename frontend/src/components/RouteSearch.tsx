@@ -1,10 +1,11 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
 import { Controller, useForm } from "react-hook-form";
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import { getLocations, parsePreferences } from "../api";
+import { getRouteSearchDefaults, routeSearchHref } from "../routeSearchParams";
 import type { SearchRequest, TransportType } from "../types";
 import { CountryCombobox, PreferenceSelector, TransportFilter } from "./RouteSearchFields";
 
@@ -24,16 +25,21 @@ const transportOptions: { value: TransportType; label: string }[] = [
   { value: "bus", label: "Buses" },
 ];
 
-export function RouteSearch({ onSubmitted }: { onSubmitted: () => void }) {
+export function RouteSearch() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { data: locations = [], isLoading, isError } = useQuery({ queryKey: ["locations"], queryFn: getLocations });
-  const { register, control, handleSubmit, setValue, formState: { errors } } = useForm<FormInput, unknown, FormValues>({
+  const { register, control, handleSubmit, setValue, reset, formState: { errors } } = useForm<FormInput, unknown, FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { origin: "", destination: "", preference: "fastest", transportTypes: [], maximumTransfers: 3 },
+    defaultValues: getRouteSearchDefaults(searchParams),
   });
   const [prompt, setPrompt] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [aiMessage, setAiMessage] = useState("");
+
+  useEffect(() => {
+    reset(getRouteSearchDefaults(searchParams));
+  }, [reset, searchParams]);
 
   const applyAiPreferences = async () => {
     if (!prompt.trim()) {
@@ -62,19 +68,17 @@ export function RouteSearch({ onSubmitted }: { onSubmitted: () => void }) {
       ...values,
       maximumTransfers: values.maximumTransfers,
     };
-    sessionStorage.setItem("wayfinder-search", JSON.stringify(request));
-    onSubmitted();
-    navigate("/results");
+    navigate(routeSearchHref("/results", request));
   };
 
   return (
-    <form className="rounded-4xl border border-border bg-white p-12 shadow-[0_1.4rem_4rem_var(--color-shadow)] max-sm:p-8" onSubmit={handleSubmit(onSubmit)}>
+    <form className="rounded-4xl border border-border bg-white p-12 shadow-[0_1.4rem_4rem_var(--color-shadow)] max-sm:p-5" onSubmit={handleSubmit(onSubmit)}>
       <div className="mb-4 flex items-start justify-between">
         <div><p className="mb-4 text-xs font-bold tracking-[.14em] text-muted">ROUTE PLANNER</p><h2 className="font-display text-[1.5rem] font-semibold">Where will you go?</h2></div>
         <span className="rounded-full bg-green-soft px-2.5 py-1.5 text-xs font-bold text-green">LIVE</span>
       </div>
       {isError && <p className="rounded-2xl bg-warning-bg p-3 text-sm text-warning-text" role="alert">Connect the routing API to load locations. Set <code>VITE_API_BASE_URL</code> to its address.</p>}
-      <div className="mb-7 rounded-2xl bg-night-soft p-5 text-white">
+      <div className="mb-7 rounded-2xl bg-night-soft p-5 text-white max-sm:p-4">
         <label htmlFor="trip-prompt" className="flex flex-col gap-2">
         <span className="text-xs font-bold uppercase tracking-[.09em] text-blue-soft">Describe your trip</span>
         <textarea id="trip-prompt" className="min-h-20 resize-y rounded-xl border border-blue-dim/30 bg-night p-3 text-sm text-white outline-none placeholder:text-blue-dim focus:border-coral-bright focus-visible:ring-4 focus-visible:ring-coral-bright/50" value={prompt} onChange={(event) => setPrompt(event.target.value)} placeholder="Cheapest route from France to Germany, no buses" />
@@ -96,12 +100,16 @@ export function RouteSearch({ onSubmitted }: { onSubmitted: () => void }) {
           <CountryCombobox label="To" locations={locations} value={field.value} onChange={field.onChange} loading={isLoading} error={errors.destination?.message} />
         )} />
       </div>
-      <div className="flex items-end justify-between border-t border-border-faint pt-[2.2rem] mb-8 max-sm:flex-col max-sm:items-stretch max-sm:gap-[1.6rem]">
+      <div className="mb-8 flex items-end justify-between border-t border-border-faint pt-[2.2rem] max-sm:flex-col max-sm:items-stretch max-sm:gap-6">
         <PreferenceSelector register={register} />
-        <label htmlFor="maximum-transfers" className="flex flex-col gap-2"><span className="text-xs font-bold uppercase tracking-[.09em] text-muted-light">Max transfers</span><input id="maximum-transfers" className="mt-2 w-20 rounded-2xl border border-border-soft bg-white-soft p-3.5 focus-visible:ring-4 focus-visible:ring-coral/40" type="number" min="0" max="10" {...register("maximumTransfers")} /></label>
+        <label htmlFor="maximum-transfers" className="flex flex-col gap-2">
+          <span className="text-xs font-bold uppercase tracking-[.09em] text-muted-light">Max transfers</span>
+          <input id="maximum-transfers" className="mt-2 w-20 rounded-2xl border border-border-soft bg-white-soft p-3.5 focus-visible:ring-4 focus-visible:ring-coral/40" type="number" min="0" max="10" aria-invalid={Boolean(errors.maximumTransfers)} aria-describedby={errors.maximumTransfers ? "maximum-transfers-error" : undefined} {...register("maximumTransfers")} />
+          {errors.maximumTransfers && <small id="maximum-transfers-error" className="text-error-dark">{errors.maximumTransfers.message}</small>}
+        </label>
       </div>
       <TransportFilter register={register} options={transportOptions} />
-      <button className="mt-6 flex w-full items-center justify-center gap-5 rounded-2xl border-0 bg-navy p-3.5 font-bold text-sm text-white transition hover:bg-coral" type="submit">Search routes <span>→</span></button>
+      <button className="mt-6 flex w-full items-center justify-center gap-5 rounded-2xl border-0 bg-navy p-3.5 font-bold text-sm text-white transition hover:bg-coral focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-coral/40" type="submit">Search routes <span aria-hidden="true">→</span></button>
     </form>
   );
 }

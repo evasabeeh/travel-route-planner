@@ -64,6 +64,10 @@ private:
             WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME,
             WINHTTP_NO_PROXY_BYPASS, 0);
         if (!session) throw std::runtime_error("Unable to initialize the AI client.");
+        if (!WinHttpSetTimeouts(session, 15000, 15000, 15000, 60000)) {
+            WinHttpCloseHandle(session);
+            throw std::runtime_error("Unable to configure Gemini request timeouts.");
+        }
         HINTERNET connection = WinHttpConnect(session, L"generativelanguage.googleapis.com",
             INTERNET_DEFAULT_HTTPS_PORT, 0);
         if (!connection) {
@@ -87,11 +91,39 @@ private:
         const BOOL sent = WinHttpSendRequest(requestHandle, headers.c_str(),
             static_cast<DWORD>(-1L), const_cast<char*>(body.c_str()),
             static_cast<DWORD>(body.size()), static_cast<DWORD>(body.size()), 0);
-        if (!sent || !WinHttpReceiveResponse(requestHandle, nullptr)) {
+        if (!sent) {
+            const DWORD winHttpError = GetLastError();
             WinHttpCloseHandle(requestHandle);
             WinHttpCloseHandle(connection);
             WinHttpCloseHandle(session);
-            throw std::runtime_error("Gemini API request failed.");
+            throw std::runtime_error("Sending the Gemini API request failed (WinHTTP error " +
+                                     std::to_string(winHttpError) + ").");
+        }
+        if (!WinHttpReceiveResponse(requestHandle, nullptr)) {
+            const DWORD winHttpError = GetLastError();
+            WinHttpCloseHandle(requestHandle);
+            WinHttpCloseHandle(connection);
+            WinHttpCloseHandle(session);
+            throw std::runtime_error("Waiting for the Gemini API response failed (WinHTTP error " +
+                                     std::to_string(winHttpError) + ").");
+        }
+        DWORD statusCode = 0;
+        DWORD statusCodeSize = sizeof(statusCode);
+        if (!WinHttpQueryHeaders(requestHandle,
+                WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+                WINHTTP_HEADER_NAME_BY_INDEX, &statusCode, &statusCodeSize,
+                WINHTTP_NO_HEADER_INDEX)) {
+            WinHttpCloseHandle(requestHandle);
+            WinHttpCloseHandle(connection);
+            WinHttpCloseHandle(session);
+            throw std::runtime_error("Unable to read the Gemini API response status.");
+        }
+        if (statusCode < 200 || statusCode >= 300) {
+            WinHttpCloseHandle(requestHandle);
+            WinHttpCloseHandle(connection);
+            WinHttpCloseHandle(session);
+            throw std::runtime_error("Gemini API returned HTTP " +
+                                     std::to_string(statusCode) + ".");
         }
         std::string response;
         DWORD available = 0;

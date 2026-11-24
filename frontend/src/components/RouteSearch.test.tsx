@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getLocations, parsePreferences } from "../api";
 import { RouteSearch } from "./RouteSearch";
@@ -17,12 +17,18 @@ const locations = [
   { country: "Germany", capital: "Berlin", latitude: 52.5, longitude: 13.4 },
 ];
 
-function renderSearch() {
+function LocationProbe() {
+  const location = useLocation();
+  return <output data-testid="location">{location.pathname}{location.search}</output>;
+}
+
+function renderSearch(initialEntry = "/planner") {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[initialEntry]}>
       <QueryClientProvider client={queryClient}>
-        <RouteSearch onSubmitted={vi.fn()} />
+        <RouteSearch />
+        <LocationProbe />
       </QueryClientProvider>
     </MemoryRouter>,
   );
@@ -36,7 +42,7 @@ describe("RouteSearch", () => {
   it("opens the country list on the first click and supports keyboard selection", async () => {
     const user = userEvent.setup();
     renderSearch();
-    const origin = screen.getAllByRole("combobox")[0];
+    const origin = screen.getByRole("combobox", { name: "From" });
 
     await user.click(origin);
     expect(await screen.findAllByRole("option")).not.toHaveLength(0);
@@ -50,7 +56,7 @@ describe("RouteSearch", () => {
   it("supports Home and End navigation and restores focus after selection", async () => {
     const user = userEvent.setup();
     renderSearch();
-    const origin = screen.getAllByRole("combobox")[0];
+    const origin = screen.getByRole("combobox", { name: "From" });
 
     await user.click(origin);
     await user.keyboard("{End}{Enter}");
@@ -106,8 +112,46 @@ describe("RouteSearch", () => {
     await user.click(screen.getByRole("button", { name: "Use AI" }));
 
     expect(await screen.findByText(/Preferences extracted/i)).toBeVisible();
-    expect(screen.getAllByRole("combobox")[0]).toHaveValue("France");
-    expect(screen.getAllByRole("combobox")[1]).toHaveValue("Germany");
+    expect(screen.getByRole("combobox", { name: "From" })).toHaveValue("France");
+    expect(screen.getByRole("combobox", { name: "To" })).toHaveValue("Germany");
     expect(screen.getByRole("radio", { name: "Best value" })).toBeChecked();
+  });
+
+  it("prefills the search form from a shared route URL", () => {
+    renderSearch("/planner?origin=France&destination=Germany&preference=cheapest&transport=bus&maximumTransfers=1");
+
+    expect(screen.getByRole("combobox", { name: "From" })).toHaveValue("France");
+    expect(screen.getByRole("combobox", { name: "To" })).toHaveValue("Germany");
+    expect(screen.getByRole("radio", { name: "Best value" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Buses" })).toBeChecked();
+    expect(screen.getByLabelText("Max transfers")).toHaveValue(1);
+  });
+
+  it("navigates to a shareable results URL containing search filters", async () => {
+    const user = userEvent.setup();
+    renderSearch();
+    const origin = screen.getByRole("combobox", { name: "From" });
+    const destination = screen.getByRole("combobox", { name: "To" });
+
+    await user.type(origin, "France");
+    await user.keyboard("{ArrowDown}{Enter}");
+    await user.type(destination, "Germany");
+    await user.keyboard("{ArrowDown}{Enter}");
+    await user.click(screen.getByRole("radio", { name: "Best value" }));
+    await user.click(screen.getByRole("checkbox", { name: "Buses" }));
+    await user.clear(screen.getByLabelText("Max transfers"));
+    await user.type(screen.getByLabelText("Max transfers"), "1");
+    await user.click(screen.getByRole("button", { name: /Search routes/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("location")).toHaveTextContent("/results?");
+    });
+    const search = screen.getByTestId("location").textContent?.split("?")[1] ?? "";
+    const params = new URLSearchParams(search);
+    expect(params.get("origin")).toBe("France");
+    expect(params.get("destination")).toBe("Germany");
+    expect(params.get("preference")).toBe("cheapest");
+    expect(params.getAll("transport")).toEqual(["bus"]);
+    expect(params.get("maximumTransfers")).toBe("1");
   });
 });
